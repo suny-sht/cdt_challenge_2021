@@ -85,6 +85,7 @@ void ObjectDetector::imageCallback(const sensor_msgs::ImageConstPtr &in_msg)
             // If recognized, add to list of detected objects
             if (valid_object)
             {
+                std::cout << "Found " << obj_name << std::endl;
                 detected_objects_.objects.push_back(new_object);
             }
         }
@@ -133,14 +134,6 @@ cv::Mat ObjectDetector::applyColourFilter(const cv::Mat &in_image_bgr, const Col
         ROS_ERROR_STREAM("[ObjectDetector::colourFilter] colour (" << colour << "  not implemented!");
     }
     
-
-    double minVal; 
-    double maxVal; 
-    cv::Point minLoc; 
-    cv::Point maxLoc;
-
-    cv::minMaxLoc( mask, &minVal, &maxVal, &minLoc, &maxLoc );
-    // std::cout << colour << " , " << maxVal << " , " << maxLoc << std::endl;
     cv::imwrite("/home/cdt2021/Desktop/"+object_name+".png", mask);
     // We return the mask, that will be used later
     return mask;
@@ -160,56 +153,6 @@ cv::Mat ObjectDetector::applyBoundingBox(const cv::Mat1b &in_mask, double &x, do
     return drawing;
 }
 
-bool ObjectDetector::recognizeDog(const cv::Mat &in_image, const ros::Time &in_timestamp, 
-                                  const double& robot_x, const double& robot_y, const double& robot_theta,
-                                  cdt_msgs::Object &out_new_object)
-{
-    // The values below will be filled by the following functions
-    double dog_image_center_x;
-    double dog_image_center_y;
-    double dog_image_height;
-    double dog_image_width;
-
-    // TODO: the functions we use below should be filled to make this work
-    cv::Mat in_image_red = applyColourFilter(in_image, Colour::RED);
-    cv::Mat in_image_bounding_box = applyBoundingBox(in_image_red, dog_image_center_x, dog_image_center_y, dog_image_width, dog_image_height);
-
-    // Note: Almost everything below should be kept as it is
-
-    // We convert the image position in pixels into "real" coordinates in the camera frame
-    // We use the intrinsics to compute the depth
-    double depth = dog_real_height_ / dog_image_height * camera_fy_;
-
-    // We now back-project the center using the  pinhole camera model
-    // The result is in camera coordinates. Camera coordinates are weird, see note below
-    double dog_position_camera_x = depth / camera_fx_ * (dog_image_center_x - camera_cx_);
-    double dog_position_camera_y = depth / camera_fy_ * (dog_image_center_y - camera_cy_);
-    double dog_position_camera_z = depth;
-
-
-    // Camera coordinates are different to robot and fixed frame coordinates
-    // Robot and fixed frame are x forward, y left and z upward
-    // Camera coordinates are x right, y downward, z forward
-    // robot x -> camera  z 
-    // robot y -> camera -x
-    // robot z -> camera -y
-    // They follow x-red, y-green and z-blue in both cases though
-    
-    double dog_position_base_x = (camera_extrinsic_x_ +  dog_position_camera_z);
-    double dog_position_base_y = (camera_extrinsic_y_ + -dog_position_camera_x);
-    
-    // We need to be careful when computing the final position of the object in global (fixed frame) coordinates
-    // We need to introduce a correction givne by the robot orientation
-    // Fill message
-    out_new_object.id = "dog";
-    out_new_object.header.stamp = in_timestamp;
-    out_new_object.header.frame_id = fixed_frame_;
-    out_new_object.position.x = robot_x +  cos(robot_theta)*dog_position_base_x + sin(-robot_theta) * dog_position_base_y;
-    out_new_object.position.y = robot_y +  sin(robot_theta)*dog_position_base_x + cos(robot_theta) * dog_position_base_y;
-    out_new_object.position.z = 0.0     + camera_extrinsic_z_ + -dog_position_camera_y;
-
-    return false ;//std::isfinite(depth);
-}
 
 bool ObjectDetector::recognizeObject(ObjectIdx object_idx, const cv::Mat &in_image, const ros::Time &in_timestamp, 
                                   const double& robot_x, const double& robot_y, const double& robot_theta,
@@ -227,8 +170,15 @@ bool ObjectDetector::recognizeObject(ObjectIdx object_idx, const cv::Mat &in_ima
     double object_image_width;
 
     // TODO: the functions we use below should be filled to make this work
-    cv::Mat in_image_red = applyColourFilter(in_image, object_colour);
-    cv::Mat in_image_bounding_box = applyBoundingBox(in_image_red, object_image_center_x, object_image_center_y, object_image_width, object_image_height);
+    cv::Mat object_mask = applyColourFilter(in_image, object_colour);
+    cv::Mat in_image_bounding_box = applyBoundingBox(object_mask, object_image_center_x, object_image_center_y, object_image_width, object_image_height);
+
+    double minVal; 
+    double maxVal; 
+    cv::Point minLoc; 
+    cv::Point maxLoc;
+
+    cv::minMaxLoc( object_mask, &minVal, &maxVal, &minLoc, &maxLoc );
 
     // Note: Almost everything below should be kept as it is
 
@@ -263,7 +213,8 @@ bool ObjectDetector::recognizeObject(ObjectIdx object_idx, const cv::Mat &in_ima
     out_new_object.position.y = robot_y +  sin(robot_theta)*object_position_base_x + cos(robot_theta) * object_position_base_y;
     out_new_object.position.z = 0.0     + camera_extrinsic_z_ + -object_position_camera_y;
 
-    return false ;//std::isfinite(depth);
+    bool validObject = maxVal > 0 ? true : false;
+    return validObject;
 }
 
 
