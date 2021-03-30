@@ -23,7 +23,8 @@
 #include <iostream>
 
 // Colours
-enum Colour { RED=0, YELLOW=0, GREEN=1,  BLUE=2 };
+enum Colour { RED=0, YELLOW=1, GREEN=2,  BLUE=3 };
+enum Object { DOG=0, BARREL=1, BARROW=2, COMPUTER=3 };
 
 class ObjectDetector
 {
@@ -60,6 +61,8 @@ class ObjectDetector
 
     // Objects' heights
     double barrel_real_height_, barrow_real_height_, computer_real_height_, dog_real_height_;
+    double heights [4] = {dog_real_height_, barrel_real_height_, barrow_real_height_, computer_real_height_};
+    Colour object_colours [4] = {RED, YELLOW, GREEN, BLUE};
     
 public:
     // Constructor
@@ -83,6 +86,11 @@ private:
 
     // Implements the procedures to recognize objects
     bool recognizeDog(const cv::Mat &in_image, const ros::Time &in_timestamp, 
+                      const double& robot_x, const double& robot_y, const double& robot_theta,
+                      cdt_msgs::Object &out_new_object);
+
+    // Implements the procedures to recognize objects
+    bool recognizeObject(int object, const cv::Mat &in_image, const ros::Time &in_timestamp, 
                       const double& robot_x, const double& robot_y, const double& robot_theta,
                       cdt_msgs::Object &out_new_object);
 

@@ -78,6 +78,16 @@ void ObjectDetector::imageCallback(const sensor_msgs::ImageConstPtr &in_msg)
     if(!wasObjectDetected("dog")) // TODO: implement a better check
     {
         cdt_msgs::Object new_object;
+        bool valid_object = recognizeObject(DOG, image, timestamp, x, y, theta, new_object);
+
+        // If recognized, add to list of detected objects
+        if (valid_object)
+        {
+            detected_objects_.objects.push_back(new_object);
+        }
+    } else if (!wasObjectDetected("a"))
+    {
+        cdt_msgs::Object new_object;
         bool valid_object = recognizeDog(image, timestamp, x, y, theta, new_object);
 
         // If recognized, add to list of detected objects
@@ -86,6 +96,7 @@ void ObjectDetector::imageCallback(const sensor_msgs::ImageConstPtr &in_msg)
             detected_objects_.objects.push_back(new_object);
         }
     }
+    
     // TODO: Add other objects here
 
 
@@ -115,21 +126,25 @@ cv::Mat ObjectDetector::applyColourFilter(const cv::Mat &in_image_bgr, const Col
     cv::Mat mask1;
     cv::Mat mask2;
     cv::Mat mask;
+
+    std::cout << colour << std::endl;
     
     if (colour == Colour::RED) {
+        std::cout << "HERE" << std::endl;
         inRange(hsv_image, cv::Scalar(  0,  50,  20), cv::Scalar( 5, 255, 255), mask1);
         inRange(hsv_image, cv::Scalar(  175,  50,  20), cv::Scalar( 180, 255, 255), mask2);
+        mask = mask1 | mask2;
     } else if (colour == Colour::YELLOW) {
-        inRange(in_image_bgr, cv::Scalar(  0,  150,  150), cv::Scalar( 50, 255, 255), mask);
+        inRange(hsv_image, cv::Scalar(  0,  50,  20), cv::Scalar( 50, 255, 255), mask);
     } else if (colour == Colour::GREEN) {
-        inRange(in_image_bgr, cv::Scalar(  0,  150,  0), cv::Scalar( 60, 255, 60), mask);
+        inRange(hsv_image, cv::Scalar(  0,  50,  20), cv::Scalar( 60, 255, 255), mask);
     } else if (colour == Colour::BLUE) {
-        inRange(in_image_bgr, cv::Scalar(  150,  0,  0), cv::Scalar( 255, 60, 60), mask);
+        inRange(hsv_image, cv::Scalar(  230,  50,  20), cv::Scalar( 250, 255, 255), mask);
     } else {
         // Report color not implemented
         ROS_ERROR_STREAM("[ObjectDetector::colourFilter] colour (" << colour << "  not implemented!");
     }
-    mask = mask1 | mask2;
+    
 
     double minVal; 
     double maxVal; 
@@ -208,8 +223,59 @@ bool ObjectDetector::recognizeDog(const cv::Mat &in_image, const ros::Time &in_t
     return false ;//std::isfinite(depth);
 }
 
-// TODO: Implement similar methods for other objects
-// HERE
+bool ObjectDetector::recognizeObject(int object, const cv::Mat &in_image, const ros::Time &in_timestamp, 
+                                  const double& robot_x, const double& robot_y, const double& robot_theta,
+                                  cdt_msgs::Object &out_new_object)
+{
+    
+    Colour object_colour = object_colours[object];
+    double object_real_height_ = heights[object];
+    
+    // The values below will be filled by the following functions
+    double object_image_center_x;
+    double object_image_center_y;
+    double object_image_height;
+    double object_image_width;
+
+    // TODO: the functions we use below should be filled to make this work
+    cv::Mat in_image_red = applyColourFilter(in_image, object_colour);
+    cv::Mat in_image_bounding_box = applyBoundingBox(in_image_red, object_image_center_x, object_image_center_y, object_image_width, object_image_height);
+
+    // Note: Almost everything below should be kept as it is
+
+    // We convert the image position in pixels into "real" coordinates in the camera frame
+    // We use the intrinsics to compute the depth
+    double depth = object_real_height_ / object_image_height * camera_fy_;
+
+    // We now back-project the center using the  pinhole camera model
+    // The result is in camera coordinates. Camera coordinates are weird, see note below
+    double object_position_camera_x = depth / camera_fx_ * (object_image_center_x - camera_cx_);
+    double object_position_camera_y = depth / camera_fy_ * (object_image_center_y - camera_cy_);
+    double object_position_camera_z = depth;
+
+    // Camera coordinates are different to robot and fixed frame coordinates
+    // Robot and fixed frame are x forward, y left and z upward
+    // Camera coordinates are x right, y downward, z forward
+    // robot x -> camera  z 
+    // robot y -> camera -x
+    // robot z -> camera -y
+    // They follow x-red, y-green and z-blue in both cases though
+    
+    double object_position_base_x = (camera_extrinsic_x_ +  object_position_camera_z);
+    double object_position_base_y = (camera_extrinsic_y_ + -object_position_camera_x);
+    
+    // We need to be careful when computing the final position of the object in global (fixed frame) coordinates
+    // We need to introduce a correction givne by the robot orientation
+    // Fill message
+    out_new_object.id = "dog";
+    out_new_object.header.stamp = in_timestamp;
+    out_new_object.header.frame_id = fixed_frame_;
+    out_new_object.position.x = robot_x +  cos(robot_theta)*object_position_base_x + sin(-robot_theta) * object_position_base_y;
+    out_new_object.position.y = robot_y +  sin(robot_theta)*object_position_base_x + cos(robot_theta) * object_position_base_y;
+    out_new_object.position.z = 0.0     + camera_extrinsic_z_ + -object_position_camera_y;
+
+    return false ;//std::isfinite(depth);
+}
 
 
 
