@@ -75,30 +75,20 @@ void ObjectDetector::imageCallback(const sensor_msgs::ImageConstPtr &in_msg)
     // Recognize object
     // Dog
     // TODO: This only publishes the first time we detect the dog
-    if(!wasObjectDetected("dog")) // TODO: implement a better check
-    {
-        cdt_msgs::Object new_object;
-        bool valid_object = recognizeObject(DOG, image, timestamp, x, y, theta, new_object);
 
-        // If recognized, add to list of detected objects
-        if (valid_object)
-        {
-            detected_objects_.objects.push_back(new_object);
-        }
-    } else if (!wasObjectDetected("a"))
+    for(auto obj_idx : object_idxs)
     {
-        cdt_msgs::Object new_object;
-        bool valid_object = recognizeDog(image, timestamp, x, y, theta, new_object);
-
-        // If recognized, add to list of detected objects
-        if (valid_object)
-        {
-            detected_objects_.objects.push_back(new_object);
+        std::string obj_name = object_names[obj_idx];
+        if(!wasObjectDetected(obj_name)){
+            cdt_msgs::Object new_object;
+            bool valid_object = recognizeObject(obj_idx, image, timestamp, x, y, theta, new_object);
+            // If recognized, add to list of detected objects
+            if (valid_object)
+            {
+                detected_objects_.objects.push_back(new_object);
+            }
         }
     }
-    
-    // TODO: Add other objects here
-
 
     // Publish list of objects detected so far
     objects_pub_.publish(detected_objects_);
@@ -118,7 +108,7 @@ cv::Mat ObjectDetector::applyColourFilter(const cv::Mat &in_image_bgr, const Col
     assert(in_image_bgr.type() == CV_8UC3);
 
     cv::Mat hsv_image;
-
+    std::string object_name = object_names[colour];
     cv::cvtColor(in_image_bgr, hsv_image, cv::COLOR_BGR2HSV);
 
     // Here you should apply some binary threhsolds on the image to detect the colors
@@ -127,19 +117,17 @@ cv::Mat ObjectDetector::applyColourFilter(const cv::Mat &in_image_bgr, const Col
     cv::Mat mask2;
     cv::Mat mask;
 
-    std::cout << colour << std::endl;
     
     if (colour == Colour::RED) {
-        std::cout << "HERE" << std::endl;
         inRange(hsv_image, cv::Scalar(  0,  50,  20), cv::Scalar( 5, 255, 255), mask1);
         inRange(hsv_image, cv::Scalar(  175,  50,  20), cv::Scalar( 180, 255, 255), mask2);
         mask = mask1 | mask2;
     } else if (colour == Colour::YELLOW) {
-        inRange(hsv_image, cv::Scalar(  0,  50,  20), cv::Scalar( 50, 255, 255), mask);
+        inRange(hsv_image, cv::Scalar(  25,  50,  20), cv::Scalar( 35, 255, 255), mask);
     } else if (colour == Colour::GREEN) {
-        inRange(hsv_image, cv::Scalar(  0,  50,  20), cv::Scalar( 60, 255, 255), mask);
+        inRange(hsv_image, cv::Scalar(  50,  50,  20), cv::Scalar( 60, 255, 255), mask);
     } else if (colour == Colour::BLUE) {
-        inRange(hsv_image, cv::Scalar(  230,  50,  20), cv::Scalar( 250, 255, 255), mask);
+        inRange(hsv_image, cv::Scalar(  110,  50,  20), cv::Scalar( 130, 255, 255), mask);
     } else {
         // Report color not implemented
         ROS_ERROR_STREAM("[ObjectDetector::colourFilter] colour (" << colour << "  not implemented!");
@@ -153,7 +141,7 @@ cv::Mat ObjectDetector::applyColourFilter(const cv::Mat &in_image_bgr, const Col
 
     cv::minMaxLoc( mask, &minVal, &maxVal, &minLoc, &maxLoc );
     // std::cout << colour << " , " << maxVal << " , " << maxLoc << std::endl;
-    cv::imwrite("/home/cdt2021/Desktop/mask.png", mask);
+    cv::imwrite("/home/cdt2021/Desktop/"+object_name+".png", mask);
     // We return the mask, that will be used later
     return mask;
 }
@@ -223,13 +211,14 @@ bool ObjectDetector::recognizeDog(const cv::Mat &in_image, const ros::Time &in_t
     return false ;//std::isfinite(depth);
 }
 
-bool ObjectDetector::recognizeObject(int object, const cv::Mat &in_image, const ros::Time &in_timestamp, 
+bool ObjectDetector::recognizeObject(ObjectIdx object_idx, const cv::Mat &in_image, const ros::Time &in_timestamp, 
                                   const double& robot_x, const double& robot_y, const double& robot_theta,
                                   cdt_msgs::Object &out_new_object)
 {
     
-    Colour object_colour = object_colours[object];
-    double object_real_height_ = heights[object];
+    Colour object_colour = object_colours[object_idx];
+    std::string object_name = object_names[object_idx];
+    double object_real_height_ = heights[object_idx];
     
     // The values below will be filled by the following functions
     double object_image_center_x;
@@ -267,7 +256,7 @@ bool ObjectDetector::recognizeObject(int object, const cv::Mat &in_image, const 
     // We need to be careful when computing the final position of the object in global (fixed frame) coordinates
     // We need to introduce a correction givne by the robot orientation
     // Fill message
-    out_new_object.id = "dog";
+    out_new_object.id = object_name;
     out_new_object.header.stamp = in_timestamp;
     out_new_object.header.frame_id = fixed_frame_;
     out_new_object.position.x = robot_x +  cos(robot_theta)*object_position_base_x + sin(-robot_theta) * object_position_base_y;
