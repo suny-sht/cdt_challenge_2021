@@ -1,5 +1,5 @@
 #include <object_detector_cdt/object_detector.h>
-
+#include <cstdlib>
 
 ObjectDetector::ObjectDetector(ros::NodeHandle &nh)
 {
@@ -8,6 +8,7 @@ ObjectDetector::ObjectDetector(ros::NodeHandle &nh)
 
     // Setup subscriber
     image_transport::ImageTransport it(nh);
+
     image_sub_ = it.subscribe(input_image_topic_, 1, &ObjectDetector::imageCallback, this);
 
     // Setup publisher
@@ -60,7 +61,7 @@ void ObjectDetector::readParameters(ros::NodeHandle &nh)
 void ObjectDetector::imageCallback(const sensor_msgs::ImageConstPtr &in_msg)
 {
     ROS_DEBUG("New image received!");
-
+    
     // Preallocate some variables
     cv::Mat image;
     ros::Time timestamp;
@@ -105,22 +106,39 @@ cv::Mat ObjectDetector::applyColourFilter(const cv::Mat &in_image_bgr, const Col
 {
     assert(in_image_bgr.type() == CV_8UC3);
 
+    cv::Mat hsv_image;
+
+    cv::cvtColor(in_image_bgr, hsv_image, cv::COLOR_BGR2HSV);
+
     // Here you should apply some binary threhsolds on the image to detect the colors
     // The output should be a binary mask indicating where the object of a given color is located
+    cv::Mat mask1;
+    cv::Mat mask2;
     cv::Mat mask;
+    
     if (colour == Colour::RED) {
-        inRange(in_image_bgr, cv::Scalar(  0,  0,  0), cv::Scalar( 255, 255, 255), mask);
+        inRange(hsv_image, cv::Scalar(  0,  50,  20), cv::Scalar( 5, 255, 255), mask1);
+        inRange(hsv_image, cv::Scalar(  175,  50,  20), cv::Scalar( 180, 255, 255), mask2);
     } else if (colour == Colour::YELLOW) {
-        inRange(in_image_bgr, cv::Scalar(  0,  0,  0), cv::Scalar( 255, 255, 255), mask);
+        inRange(in_image_bgr, cv::Scalar(  0,  150,  150), cv::Scalar( 50, 255, 255), mask);
     } else if (colour == Colour::GREEN) {
-        inRange(in_image_bgr, cv::Scalar(  0,  0,  0), cv::Scalar( 255, 255, 255), mask);
+        inRange(in_image_bgr, cv::Scalar(  0,  150,  0), cv::Scalar( 60, 255, 60), mask);
     } else if (colour == Colour::BLUE) {
-        inRange(in_image_bgr, cv::Scalar(  0,  0,  0), cv::Scalar( 255, 255, 255), mask);
+        inRange(in_image_bgr, cv::Scalar(  150,  0,  0), cv::Scalar( 255, 60, 60), mask);
     } else {
         // Report color not implemented
         ROS_ERROR_STREAM("[ObjectDetector::colourFilter] colour (" << colour << "  not implemented!");
     }
+    mask = mask1 | mask2;
 
+    double minVal; 
+    double maxVal; 
+    cv::Point minLoc; 
+    cv::Point maxLoc;
+
+    cv::minMaxLoc( mask, &minVal, &maxVal, &minLoc, &maxLoc );
+    // std::cout << colour << " , " << maxVal << " , " << maxLoc << std::endl;
+    cv::imwrite("/home/cdt2021/Desktop/mask.png", mask);
     // We return the mask, that will be used later
     return mask;
 }
@@ -187,7 +205,7 @@ bool ObjectDetector::recognizeDog(const cv::Mat &in_image, const ros::Time &in_t
     out_new_object.position.y = robot_y +  sin(robot_theta)*dog_position_base_x + cos(robot_theta) * dog_position_base_y;
     out_new_object.position.z = 0.0     + camera_extrinsic_z_ + -dog_position_camera_y;
 
-    return std::isfinite(depth);
+    return false ;//std::isfinite(depth);
 }
 
 // TODO: Implement similar methods for other objects
