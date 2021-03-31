@@ -51,6 +51,7 @@ class WorldModelling
 
     // Internals
     cdt_msgs::Graph exploration_graph_;
+    cdt_msgs::GraphNode last_node_;
     grid_map::GridMap traversability_;
     cdt_msgs::Frontiers current_frontiers_;
     cdt_msgs::Frontiers frontiers_;
@@ -59,7 +60,7 @@ class WorldModelling
     float x_last_;
     float y_last_;
     float theta_last_;
-    unsigned int num_nodes_;
+    unsigned int num_nodes_ = 0;
     bool first_node_;
     bool first_frontier_;
 

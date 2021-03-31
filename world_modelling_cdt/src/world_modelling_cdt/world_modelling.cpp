@@ -1,4 +1,5 @@
 #include <world_modelling_cdt/world_modelling.h>
+#include <cmath>
 
 WorldModelling::WorldModelling(ros::NodeHandle &nh)
     : x_last_(0.f),
@@ -96,10 +97,20 @@ bool WorldModelling::updateGraph(const float &x, const float &y, const float &th
     // TODO: you need to update the exploration_graph_ using the current pose
 
     // You may need to change this flag with some conditions
-    bool create_new_node = true;
+    float thresh = 0.5;
+    float neighbour_thresh = 0.8;
+    float dist;
+    if(num_nodes_ > 0){
+        float x_last = last_node_.pose.position.x;
+        float y_last = last_node_.pose.position.y;
+        dist = pow(x-x_last, 2) + pow(y-y_last,2);
+    }
+    else
+    {
+        dist = thresh;
+    }
 
-    // if the condition is satisfied, you should create a new node and add it to the graph
-    if(first_node_)
+    if(dist >= thresh)
     {
         // Here we briefly show how to fill the data
         cdt_msgs::GraphNode new_node;
@@ -107,15 +118,30 @@ bool WorldModelling::updateGraph(const float &x, const float &y, const float &th
         new_node.pose.position.y = y;
         new_node.id.data = num_nodes_; // The id is simply the number of the node
         
+        
         // Adding neighbors
-        std_msgs::Int32 neighbor_id;
-        neighbor_id.data = 0;
-        new_node.neighbors_id.push_back(neighbor_id);  // here we fill the neighbors of the new_node
+
+        for (auto node : exploration_graph_.nodes)
+        {
+            float n_x = node.pose.position.x;
+            float n_y = node.pose.position.y;
+
+            float n_dist = pow(x-n_x, 2) + pow(y-n_y,2);
+
+            if(n_dist <= neighbour_thresh)
+            {
+                new_node.neighbors_id.push_back(node.id);  // here we fill the neighbors of the new_node
+                node.neighbors_id.push_back(new_node.id);
+
+            }
+        } 
 
         // Finally add the new node to the graph (since all the properties are filled)
         exploration_graph_.nodes.push_back(new_node);
 
         num_nodes_++; // Increase the number of added nodes
+
+        last_node_ = new_node;
 
         first_node_ = false; // This is to avoid creating more than one nodes. This is just for the example, you may need to remove this
 
@@ -145,6 +171,7 @@ void WorldModelling::computeTraversability(const grid_map::GridMap &grid_map)
         // We only want to use the valid values
         if (traversability_.isValid(*iterator, "elevation"))
         {
+           // ROS_INFO(traversability_at('elevation', *iterator);
 
             // TODO Fill the traversability at each position using some criterion based on the other layers
             // How can we figure out if an area is traversable or not?
