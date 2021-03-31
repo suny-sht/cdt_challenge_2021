@@ -15,7 +15,7 @@
 #include <cdt_msgs/Frontiers.h>
 #include <grid_map_core/grid_map_core.hpp>
 #include <grid_map_ros/grid_map_ros.hpp>
-
+#include <filters/filter_chain.h>
 #include <opencv2/core.hpp>
 
 class WorldModelling
@@ -23,6 +23,7 @@ class WorldModelling
     // Members
     // Elevation map subscriber
     ros::Subscriber map_sub_;
+    ros::Subscriber explored_space_sub_;
 
     // Publishers
     ros::Publisher graph_pub_;
@@ -35,6 +36,7 @@ class WorldModelling
 
     // input topics/parameters
     std::string input_map_topic_;
+    std::string input_explored_space_topic_;
     std::string input_fixed_frame_;
     std::string input_base_frame_;
     float neighbor_distance_;
@@ -43,7 +45,7 @@ class WorldModelling
     float max_distance_to_search_frontiers_;
     float distance_to_delete_frontier_;
     float frontiers_search_angle_resolution_;
-
+ 
     // output topics
     std::string output_graph_topic_;
     std::string output_frontiers_topic_;
@@ -63,6 +65,11 @@ class WorldModelling
     unsigned int num_nodes_ = 0;
     bool first_node_;
     bool first_frontier_;
+
+    // Extra 
+    grid_map::GridMap exploredMap_;
+    grid_map::GridMap filterChainMap_;
+
 
 public:
     // Constructor
@@ -93,4 +100,11 @@ private:
 
     // Utils
     void getRobotPose(float &x, float &y, float &theta);
+
+    bool isCloseToGraph(const float &x, const float &y,const float &threshold);
+
+    void filterCallback(const grid_map_msgs::GridMap& message);
+
+    filters::FilterChain<grid_map::GridMap> filterChain_;
+
 };

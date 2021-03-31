@@ -1,19 +1,23 @@
 #include <world_modelling_cdt/world_modelling.h>
 #include <cmath>
 
+using namespace grid_map;
+
 WorldModelling::WorldModelling(ros::NodeHandle &nh)
     : x_last_(0.f),
       y_last_(0.f),
       theta_last_(0.f),
       num_nodes_(0),
       first_node_(true),
-      first_frontier_(true)
+      first_frontier_(true),
+      filterChain_("grid_map::GridMap")
 {
     // Read parameters
     readParameters(nh);
 
     // Setup subscriber
     map_sub_ = nh.subscribe(input_map_topic_, 1, &WorldModelling::elevationMapCallback, this);
+    explored_space_sub_ = nh.subscribe(input_explored_space_topic_, 1, &WorldModelling::filterCallback, this);
 
     // Setup publisher
     graph_pub_ = nh.advertise<cdt_msgs::Graph>(output_graph_topic_, 10);
@@ -46,6 +50,7 @@ void WorldModelling::readParameters(ros::NodeHandle &nh)
     nh.param("output_graph_topic", output_graph_topic_, std::string("/exploration_graph"));
     nh.param("output_traversability_topic", output_traversability_topic_, std::string("/traversability"));
     nh.param("output_frontiers_topic", output_frontiers_topic_, std::string("/frontiers"));
+    nh.param("output_explored_space_topic", input_explored_space_topic_, std::string("/explored_space"));
     nh.param("node_creation_distance", node_creation_distance_, 1.f);
     nh.param("neighbor_distance", neighbor_distance_, 2.f);
     nh.param("elevation_threshold", elevation_threshold_, 0.1f);
@@ -55,12 +60,25 @@ void WorldModelling::readParameters(ros::NodeHandle &nh)
     nh.param("frontiers_search_angle_resolution", frontiers_search_angle_resolution_, 0.5f);
 }
 
+void WorldModelling::filterCallback(const grid_map_msgs::GridMap& message)
+{
+  // Convert message to map.
+  GridMapRosConverter::fromMessage(message, exploredMap_);
+}
+
 void WorldModelling::elevationMapCallback(const grid_map_msgs::GridMap &in_grid_map)
 {
     // ROS_INFO("New elevation map received!");
     // Convert grid map and store in local variable
     grid_map::GridMap grid_map;
     grid_map::GridMapRosConverter::fromMessage(in_grid_map, grid_map);
+
+    // Apply filter chain.
+    if (!filterChain_.update(grid_map, filterChainMap_)) {
+        ROS_ERROR("Could not update the grid map filter chain!");
+        return;
+    }
+
     grid_map.convertToDefaultStartIndex();
 
     // We also need to save the info (header) since it stores the frame and size
@@ -97,8 +115,8 @@ bool WorldModelling::updateGraph(const float &x, const float &y, const float &th
     // TODO: you need to update the exploration_graph_ using the current pose
 
     // You may need to change this flag with some conditions
-    float thresh = 0.5;
-    float neighbour_thresh = 0.8;
+    float thresh = node_creation_distance_;
+    float neighbour_thresh = neighbor_distance_;
     float dist;
     if(num_nodes_ > 0){
         float x_last = last_node_.pose.position.x;
@@ -161,6 +179,7 @@ void WorldModelling::computeTraversability(const grid_map::GridMap &grid_map)
 
     // Copy elevation from input grid map to traversability grid map
     traversability_.add("elevation", grid_map["elevation_inpainted"]);
+    
 
     // Create a new traversability layer with initial value 0.0
     traversability_.add("traversability", 0.0);
@@ -193,30 +212,75 @@ void WorldModelling::computeTraversability(const grid_map::GridMap &grid_map)
     traversability_.setBasicLayers({"traversability", "elevation"});
 }
 
+bool WorldModelling::isCloseToGraph(const float &x, const float &y,const float &threshold) 
+{ 
+
+    for (auto node : exploration_graph_.nodes)
+    {
+        float n_x = node.pose.position.x;
+        float n_y = node.pose.position.y;
+        float n_dist = pow(x-n_x, 2) + pow(y-n_y,2);
+
+        if(n_dist < threshold)
+        {
+            return true;
+        }
+    }
+    return false;
+}
+
 void WorldModelling::findCurrentFrontiers(const float &x, const float &y, const float &theta, const ros::Time &time)
 {
     // TODO: Here you need to create "frontiers" that denote the edges of the known space
     // They're used to guide robot to new places
 
-    // Some constants
-    const float half_map_size = 0.5 * traversability_.getLength().x();
+
+    
+    const float half_map_size = 0.5 * traversability_.getLength().x(); 
     const float step = traversability_.getResolution(); 
-    current_frontiers_.frontiers.clear();
- 
-    float RESOLUTION = 10.0;
-    // We define directions to look for frontiers
-    std::vector<grid_map::Position> directions;
-    for (float angle = theta*180/M_PI-90; angle <= theta*180/M_PI+90; angle += RESOLUTION)
+
+    // current_frontiers_.frontiers.clear();
+    // Filtered frontiers
+    
+    cdt_msgs::Frontiers filtered_frontiers;
+
+    for (auto frontier : current_frontiers_.frontiers)
     {
-        grid_map::Position dir(cos(M_PI/180.f * angle),
-                               sin(M_PI/180.f * angle));
-        directions.push_back(dir);
-        ROS_INFO("%f %f", theta, angle);
+        const float &frontier_x = frontier.point.x;
+        const float &frontier_y = frontier.point.y;
+       
+        bool keep = true;
+        if(isCloseToGraph(frontier_x, frontier_y, 4.f)){ keep = false;}
+
+        float explored_space = 1.f;
+
+        try
+        { 
+            grid_map::Position frontier_posistion(frontier_x + 1.f, frontier_y + 1.f);
+            explored_space = exploredMap_.atPosition("explored_space", frontier_posistion);
+            if(explored_space){keep = false;}
+        }
+        catch (const std::out_of_range &oor){}
+
+        if(keep)
+        {
+            filtered_frontiers.frontiers.push_back(frontier);
+        }
     }
 
-     // Preallocate query point
+    current_frontiers_ = filtered_frontiers;
+
+    std::vector<grid_map::Position> directions;
+    for (float angle = 0.f; angle <= 360.f; angle += frontiers_search_angle_resolution_)
+    {
+        grid_map::Position dir(cos(M_PI/180.f * angle),
+        sin(M_PI/180.f * angle));
+        directions.push_back(dir);
+    }
+
+    
+    // Preallocate query point
     grid_map::Position query_point;
-    grid_map::Position query_point_ahead;
     grid_map::Position robot_position(x, y);
 
     // Iterate all directions
@@ -225,11 +289,10 @@ void WorldModelling::findCurrentFrontiers(const float &x, const float &y, const 
         bool needs_frontier = true;
 
         // Iterate from step to the map edge
-        for (float dis = step; dis < max_distance_to_search_frontiers_; dis += step)
+        for (float dis = step+2.5; dis < max_distance_to_search_frontiers_; dis += step)
         {
             // Create query point
             query_point = dir * dis + robot_position;
-
 
             float traversability = 1.f;
 
@@ -239,7 +302,6 @@ void WorldModelling::findCurrentFrontiers(const float &x, const float &y, const 
             }
             catch (const std::out_of_range &oor)
             {
-                needs_frontier = false;
                 break;
             }
 
@@ -250,66 +312,29 @@ void WorldModelling::findCurrentFrontiers(const float &x, const float &y, const 
                 break;
             }
 
-            if( half_map_size - 2.0 < query_point.x() )
+            if( half_map_size - 2.f < query_point.x())
             {
                 needs_frontier = false;
                 break;
             }
+
         }
 
-        // Remove if close to graph
-
-        float x_new = query_point.x();
-        float y_new = query_point.y();
-
-        float x_node;
-        float y_node;
-        float dist_to_graph;
-
-        float DISTANCE_FROM_GRAPH = 8;
-
-        for (auto node : exploration_graph_.nodes)
-        {
-            x_node = node.pose.position.x;
-            y_node = node.pose.position.y;
-
-            dist_to_graph = pow(x_new-x_node, 2) + pow(y_new-y_node,2);
-
-            if(dist_to_graph <= DISTANCE_FROM_GRAPH)
-            {
-                needs_frontier = false;
-            }
-        } 
-        
-        if(needs_frontier)
+        if(needs_frontier && isCloseToGraph(query_point.x(), query_point.y(), 2.f) == false)
+            
         {
             geometry_msgs::PointStamped frontier;
-            frontier.header.stamp = time;                  // We store the time the frontier was created
+            frontier.header.stamp = time; // We store the time the frontier was created
             frontier.header.frame_id = input_fixed_frame_; // And the frame it's referenced to
-            frontier.point.x = query_point.x();                    // And the position, of course
+            frontier.point.x = query_point.x(); // And the position, of course
             frontier.point.y = query_point.y();
 
             current_frontiers_.frontiers.push_back(frontier);
         }
-
-        for (auto frontier : frontiers_.frontiers)
-        {
-            const float &frontier_x = frontier.point.x;
-            const float &frontier_y = frontier.point.y;
-
-            // Compute distance to frontier
-            float distance_to_frontier = std::hypot(frontier_x - x, frontier_y - y);
-
-            // If it's close enough, skip
-            if (distance_to_frontier < distance_to_delete_frontier_)
-            {
-                continue;
-            }
-        }
-        
     }
 
-    ROS_DEBUG_STREAM("[WorldModelling] Found " << current_frontiers_.frontiers.size() << " new frontiers");
+
+    ROS_DEBUG_STREAM("[WorldModelling] Found " << current_frontiers_.frontiers.size() << " new frontiers"); 
 }
 
 void WorldModelling::updateFrontiers(const float &x, const float &y, const float &theta)
@@ -324,9 +349,35 @@ void WorldModelling::updateFrontiers(const float &x, const float &y, const float
     // Some constants
     float half_map_size = 0.5 * traversability_.getLength().x();
     const float step = traversability_.getResolution(); // We use the map resolution as the search step
-
+ 
     // Filtered frontiers
     cdt_msgs::Frontiers filtered_frontiers;
+
+
+    for (auto frontier : current_frontiers_.frontiers)
+    {
+        const float &frontier_x = frontier.point.x;
+        const float &frontier_y = frontier.point.y;
+       
+        bool keep = true; 
+        float explored_space = 1.f;
+
+        try
+        { 
+            grid_map::Position frontier_posistion(frontier_x + 1.f, frontier_y + 1.f);
+            explored_space = exploredMap_.atPosition("explored_space", frontier_posistion);
+            if(explored_space){keep = false;}
+        }
+        catch (const std::out_of_range &oor){}
+
+        if(keep)
+        {
+            filtered_frontiers.frontiers.push_back(frontier);
+        }
+    }
+
+  
+    frontiers_ = filtered_frontiers;
 
     // Preallocate query point
     grid_map::Position query_point;
@@ -352,8 +403,6 @@ void WorldModelling::updateFrontiers(const float &x, const float &y, const float
 
     // Finally, we update the frontiers using the current ones
     frontiers_ = current_frontiers_;
-
-
 }
 
 void WorldModelling::publishData(const grid_map_msgs::GridMapInfo &in_grid_map_info)
