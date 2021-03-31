@@ -256,6 +256,26 @@ void WorldModelling::findCurrentFrontiers(const float &x, const float &y, const 
                 break;
             }
         }
+
+        float x_new = query_point.x();
+        float y_new = query_point.y();
+
+        float x_node;
+        float y_node;
+        float dist_to_graph;
+
+        for (auto node : exploration_graph_.nodes)
+        {
+            x_node = node.pose.position.x;
+            y_node = node.pose.position.y;
+
+            dist_to_graph = pow(x_new-x_node, 2) + pow(y_new-y_node,2);
+
+            if(dist_to_graph <= 9)
+            {
+                needs_frontier = false;
+            }
+        } 
         
         if(needs_frontier)
         {
