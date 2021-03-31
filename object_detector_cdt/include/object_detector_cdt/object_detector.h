@@ -64,7 +64,7 @@ class ObjectDetector
     double heights [4] = {dog_real_height_, barrel_real_height_, barrow_real_height_, computer_real_height_};
     ObjectIdx object_idxs [4] = {DOG, BARREL, BARROW, COMPUTER};
     Colour object_colours [4] = {RED, YELLOW, GREEN, BLUE};
-    std::string object_names [4] = {"Dog", "Barrel", "Barrow", "Computer"};
+    std::string object_names [4] = {"dog", "barrel", "barrow", "computer"};
     
 public:
     // Constructor

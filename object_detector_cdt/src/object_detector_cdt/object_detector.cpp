@@ -117,6 +117,7 @@ cv::Mat ObjectDetector::applyColourFilter(const cv::Mat &in_image_bgr, const Col
     cv::Mat mask1;
     cv::Mat mask2;
     cv::Mat mask;
+    cv::Mat smoothed_mask;
 
     
     if (colour == Colour::RED) {
@@ -133,8 +134,12 @@ cv::Mat ObjectDetector::applyColourFilter(const cv::Mat &in_image_bgr, const Col
         // Report color not implemented
         ROS_ERROR_STREAM("[ObjectDetector::colourFilter] colour (" << colour << "  not implemented!");
     }
+
+    //cv::GaussianBlur(mask, smoothed_mask, cv::Size(5, 5), 0);
+    //inRange(smoothed_mask, cv::Scalar(50), cv::Scalar(255), smoothed_mask);
     
-    cv::imwrite("/home/cdt2021/Desktop/"+object_name+".png", mask);
+    //cv::imwrite("/home/cdt2021/Desktop/masks/"+object_name+".png", mask);
+    //cv::imwrite("/home/cdt2021/Desktop/masks/smoothed_"+object_name+".png", smoothed_mask);
     // We return the mask, that will be used later
     return mask;
 }
@@ -159,8 +164,8 @@ bool ObjectDetector::recognizeObject(ObjectIdx object_idx, const cv::Mat &in_ima
                                   cdt_msgs::Object &out_new_object)
 {
     
+    std::string obj_name = object_names[object_idx];
     Colour object_colour = object_colours[object_idx];
-    std::string object_name = object_names[object_idx];
     double object_real_height_ = heights[object_idx];
     
     // The values below will be filled by the following functions
@@ -172,13 +177,6 @@ bool ObjectDetector::recognizeObject(ObjectIdx object_idx, const cv::Mat &in_ima
     // TODO: the functions we use below should be filled to make this work
     cv::Mat object_mask = applyColourFilter(in_image, object_colour);
     cv::Mat in_image_bounding_box = applyBoundingBox(object_mask, object_image_center_x, object_image_center_y, object_image_width, object_image_height);
-
-    double minVal; 
-    double maxVal; 
-    cv::Point minLoc; 
-    cv::Point maxLoc;
-
-    cv::minMaxLoc( object_mask, &minVal, &maxVal, &minLoc, &maxLoc );
 
     // Note: Almost everything below should be kept as it is
 
@@ -206,14 +204,19 @@ bool ObjectDetector::recognizeObject(ObjectIdx object_idx, const cv::Mat &in_ima
     // We need to be careful when computing the final position of the object in global (fixed frame) coordinates
     // We need to introduce a correction givne by the robot orientation
     // Fill message
-    out_new_object.id = object_name;
+
+    out_new_object.id = obj_name;
     out_new_object.header.stamp = in_timestamp;
     out_new_object.header.frame_id = fixed_frame_;
     out_new_object.position.x = robot_x +  cos(robot_theta)*object_position_base_x + sin(-robot_theta) * object_position_base_y;
     out_new_object.position.y = robot_y +  sin(robot_theta)*object_position_base_x + cos(robot_theta) * object_position_base_y;
     out_new_object.position.z = 0.0     + camera_extrinsic_z_ + -object_position_camera_y;
 
-    bool validObject = maxVal > 0 ? true : false;
+    bool validObject = cv::countNonZero(object_mask) > 1000 ? true : false;  // Mask valid if more than 1000 pixels
+
+    if (obj_name == "barrel" or obj_name == "barrow"){
+        validObject = false;
+    } 
     return validObject;
 }
 
