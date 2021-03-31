@@ -176,7 +176,17 @@ void WorldModelling::computeTraversability(const grid_map::GridMap &grid_map)
             // TODO Fill the traversability at each position using some criterion based on the other layers
             // How can we figure out if an area is traversable or not?
             // YOu should fill with a 1.0 if it's traversable, and -1.0 in the other case
-            traversability_.at("traversability", *iterator) = -1.0;
+            
+            float elevation = traversability_.at("elevation", *iterator);
+
+            if (elevation > elevation_threshold_)
+            {
+                traversability_.at("traversability", *iterator) = -1.0;
+            }
+            else
+            {
+                traversability_.at("traversability", *iterator) = 1.0;
+            }
         }
     }
 
@@ -188,23 +198,88 @@ void WorldModelling::findCurrentFrontiers(const float &x, const float &y, const 
     // TODO: Here you need to create "frontiers" that denote the edges of the known space
     // They're used to guide robot to new places
 
-    // If the direction needs a frontier, create one and store in current frontiers
-    if (first_frontier_)
+    // Some constants
+    const float half_map_size = 0.5 * traversability_.getLength().x();
+    ROS_INFO("map size %f half_map_size");
+    const float step = traversability_.getResolution(); 
+    current_frontiers_.frontiers.clear();
+ 
+    // We define directions to look for frontiers
+    std::vector<grid_map::Position> directions;
+    for (float angle = 0.f; angle <= 360.f; angle += frontiers_search_angle_resolution_)
     {
-        // We create the frontier as a stamped point
+        grid_map::Position dir(cos(M_PI/180.f * angle),
+                               sin(M_PI/180.f * angle));
+        directions.push_back(dir);
+    }
 
-        // In this example we set a frontier 5 meters ahead of the robot
-        // The frontiers are expresed in the fixed frame
-        geometry_msgs::PointStamped frontier;
-        frontier.header.stamp = time;                  // We store the time the frontier was created
-        frontier.header.frame_id = input_fixed_frame_; // And the frame it's referenced to
-        frontier.point.x = x + 5.0;                    // And the position, of course
-        frontier.point.y = y;
+     // Preallocate query point
+    grid_map::Position query_point;
+    grid_map::Position robot_position(x, y);
 
-        // Finally we store it in the current frontiers' list
-        current_frontiers_.frontiers.push_back(frontier);
+    // Iterate all directions
+    for (auto dir : directions)
+    {
+        bool needs_frontier = true;
 
-        first_frontier_ = false; // This is to avoid creating more than one frontiers. This is just for the example, you may need to remove this
+        // Iterate from step to the map edge
+        for (float dis = step; dis < max_distance_to_search_frontiers_; dis += step)
+        {
+            // Create query point
+            query_point = dir * dis + robot_position;
+
+            float traversability = 1.f;
+
+            try
+            {
+                traversability = traversability_.atPosition("traversability", query_point);
+            }
+            catch (const std::out_of_range &oor)
+            {
+                needs_frontier = false;
+                break;
+            }
+
+            // If smaller than 1, do not add frontier
+            if (traversability < 0.f)
+            {
+                needs_frontier = false;
+                break;
+            }
+
+            if( half_map_size - 2.0 < query_point.x() )
+            {
+                needs_frontier = false;
+                break;
+            }
+        }
+        
+        if(needs_frontier)
+        {
+            geometry_msgs::PointStamped frontier;
+            frontier.header.stamp = time;                  // We store the time the frontier was created
+            frontier.header.frame_id = input_fixed_frame_; // And the frame it's referenced to
+            frontier.point.x = query_point.x();                    // And the position, of course
+            frontier.point.y = query_point.y();
+
+            current_frontiers_.frontiers.push_back(frontier);
+        }
+
+        for (auto frontier : frontiers_.frontiers)
+        {
+            const float &frontier_x = frontier.point.x;
+            const float &frontier_y = frontier.point.y;
+
+            // Compute distance to frontier
+            float distance_to_frontier = std::hypot(frontier_x - x, frontier_y - y);
+
+            // If it's close enough, skip
+            if (distance_to_frontier < distance_to_delete_frontier_)
+            {
+                continue;
+            }
+        }
+        
     }
 
     ROS_DEBUG_STREAM("[WorldModelling] Found " << current_frontiers_.frontiers.size() << " new frontiers");
