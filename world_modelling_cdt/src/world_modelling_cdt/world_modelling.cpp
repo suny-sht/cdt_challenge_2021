@@ -203,7 +203,7 @@ void WorldModelling::findCurrentFrontiers(const float &x, const float &y, const 
     const float step = traversability_.getResolution(); 
     current_frontiers_.frontiers.clear();
  
-    float RESOLUTION = 15.0;
+    float RESOLUTION = 10.0;
     // We define directions to look for frontiers
     std::vector<grid_map::Position> directions;
     for (float angle = theta*180/M_PI-90; angle <= theta*180/M_PI+90; angle += RESOLUTION)
@@ -257,12 +257,16 @@ void WorldModelling::findCurrentFrontiers(const float &x, const float &y, const 
             }
         }
 
+        // Remove if close to graph
+
         float x_new = query_point.x();
         float y_new = query_point.y();
 
         float x_node;
         float y_node;
         float dist_to_graph;
+
+        float DISTANCE_FROM_GRAPH = 8;
 
         for (auto node : exploration_graph_.nodes)
         {
@@ -271,7 +275,7 @@ void WorldModelling::findCurrentFrontiers(const float &x, const float &y, const 
 
             dist_to_graph = pow(x_new-x_node, 2) + pow(y_new-y_node,2);
 
-            if(dist_to_graph <= 9)
+            if(dist_to_graph <= DISTANCE_FROM_GRAPH)
             {
                 needs_frontier = false;
             }
