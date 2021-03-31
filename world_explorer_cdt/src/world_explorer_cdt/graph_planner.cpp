@@ -167,13 +167,13 @@ void GraphPlanner::dijkstra(const Eigen::MatrixXd& graph, int start_id, int goal
     
     int node_id = start_id;
 
-    while (node_id != end_id){
+    while (node_id != goal_id){
         Eigen::Vector2d route_point(graph_.nodes.at(node_id).pose.position.x, graph_.nodes.at(node_id).pose.position.y);
         route.push_back(route_point);
         node_id = path[node_id];
     }
 
-    Eigen::Vector2d goal(graph_.nodes.at(end_id).pose.position.x, graph_.nodes.at(end_id).pose.position.y);
+    Eigen::Vector2d goal(graph_.nodes.at(goal_id).pose.position.x, graph_.nodes.at(goal_id).pose.position.y);
     route.push_back(goal);
 }
 
