@@ -55,9 +55,39 @@ void GraphPlanner::findClosestNodes(const double& robot_x, const double& robot_y
     }
 }
 
+
+
 void GraphPlanner::generateGraphFromMsg(Eigen::MatrixXd & graph)
 {
     // TODO fill the graph representation
+}
+
+bool GraphPlanner::planPathHome(const double& robot_x, 
+                            const double& robot_y , 
+                            const double& robot_theta, 
+                            std::vector<Eigen::Vector2d>& route)
+{
+    std::vector<geometry_msgs::Pose> graph_nodes;
+
+    Eigen::Vector2d home_pose(graph_.nodes.at(0).pose.position.x, graph_.nodes.at(0).pose.position.y);
+
+    findClosestNodes(robot_x, robot_y, robot_theta, home_pose, graph_nodes);
+
+    Eigen::Vector2d goal(graph_nodes.at(0).position.x, graph_nodes.at(0).position.y);
+    Eigen::Vector2d start(graph_nodes.at(1).position.x, graph_nodes.at(1).position.y);    
+
+    int goal_id = getGraphID(goal.x(), goal.y());
+    int start_id = getGraphID(start.x(), start.y());
+
+    int no_vertices = graph_.nodes.size();
+
+    Eigen::MatrixXd graph(no_vertices, no_vertices);
+
+    generateGraphFromMsg(graph);
+
+    dijkstra(graph, start_id, goal_id, route);
+
+    return true;
 }
 
 bool GraphPlanner::planPath(const double& robot_x, 
@@ -131,13 +161,20 @@ void GraphPlanner::dijkstra(const Eigen::MatrixXd& graph, int start_id, int goal
             }		
 		}
 	}
-
-    // Add goal pose to route
+ 
+    // Add goal pose to route, TODO extract the final route
     route.clear();
+    
+    int node_id = start_id;
+
+    while (node_id != goal_id){
+        Eigen::Vector2d route_point(graph_.nodes.at(node_id).pose.position.x, graph_.nodes.at(node_id).pose.position.y);
+        route.push_back(route_point);
+        node_id = path[node_id];
+    }
+
     Eigen::Vector2d goal(graph_.nodes.at(goal_id).pose.position.x, graph_.nodes.at(goal_id).pose.position.y);
     route.push_back(goal);
-
-    // TODO extract the final route
 }
 
 int GraphPlanner::minimumDist(double dist[], bool Dset[]) 
