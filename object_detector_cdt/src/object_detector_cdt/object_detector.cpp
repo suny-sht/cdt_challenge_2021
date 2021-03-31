@@ -178,13 +178,6 @@ bool ObjectDetector::recognizeObject(ObjectIdx object_idx, const cv::Mat &in_ima
     cv::Mat object_mask = applyColourFilter(in_image, object_colour);
     cv::Mat in_image_bounding_box = applyBoundingBox(object_mask, object_image_center_x, object_image_center_y, object_image_width, object_image_height);
 
-    double minVal; 
-    double maxVal; 
-    cv::Point minLoc; 
-    cv::Point maxLoc;
-
-    cv::minMaxLoc( object_mask, &minVal, &maxVal, &minLoc, &maxLoc );
-
     // Note: Almost everything below should be kept as it is
 
     // We convert the image position in pixels into "real" coordinates in the camera frame
@@ -211,12 +204,6 @@ bool ObjectDetector::recognizeObject(ObjectIdx object_idx, const cv::Mat &in_ima
     // We need to be careful when computing the final position of the object in global (fixed frame) coordinates
     // We need to introduce a correction givne by the robot orientation
     // Fill message
-    
-    if (obj_name == "barrel"){
-        obj_name = "dog";
-    } else if (obj_name == "barrow"){
-        obj_name = "computer";
-    }
 
     out_new_object.id = obj_name;
     out_new_object.header.stamp = in_timestamp;
@@ -225,8 +212,11 @@ bool ObjectDetector::recognizeObject(ObjectIdx object_idx, const cv::Mat &in_ima
     out_new_object.position.y = robot_y +  sin(robot_theta)*object_position_base_x + cos(robot_theta) * object_position_base_y;
     out_new_object.position.z = 0.0     + camera_extrinsic_z_ + -object_position_camera_y;
 
-    bool validObject = cv::countNonZero(object_mask) > 1000 ? true : false;
-    
+    bool validObject = cv::countNonZero(object_mask) > 1000 ? true : false;  // Mask valid if more than 1000 pixels
+
+    if (obj_name == "barrel" or obj_name == "barrow"){
+        validObject = false;
+    } 
     return validObject;
 }
 
