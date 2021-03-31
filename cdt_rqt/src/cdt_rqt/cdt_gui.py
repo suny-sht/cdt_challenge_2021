@@ -248,14 +248,14 @@ class CdtGui(Plugin):
           self._widget.labelComputerPosition.setText(label)
 
         if obj.id == 'barrel':
-          self._widget.labelBarrell.setEnabled(True)
+          self._widget.labelBarrel.setEnabled(True)
           label = 'x: %.1f, y: %.1f' %(obj.position.x, obj.position.y)
-          self._widget.labelBarrellPosition.setText(label)
+          self._widget.labelBarrelPosition.setText(label)
 
         if obj.id == 'barrow':
-          self._widget.labelBarrow.setEnabled(True)
+          self._widget.labelBurrow.setEnabled(True)
           label = 'x: %.1f, y: %.1f' %(obj.position.x, obj.position.y)
-          self._widget.labelBarrowPosition.setText(label)
+          self._widget.labelBurrowPosition.setText(label)
 
         if obj.id == 'duck':
           self._widget.labelDuck.setEnabled(True)
