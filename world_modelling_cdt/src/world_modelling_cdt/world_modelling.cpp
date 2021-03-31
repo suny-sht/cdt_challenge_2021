@@ -200,21 +200,23 @@ void WorldModelling::findCurrentFrontiers(const float &x, const float &y, const 
 
     // Some constants
     const float half_map_size = 0.5 * traversability_.getLength().x();
-    ROS_INFO("map size %f half_map_size");
     const float step = traversability_.getResolution(); 
     current_frontiers_.frontiers.clear();
  
+    float RESOLUTION = 15.0;
     // We define directions to look for frontiers
     std::vector<grid_map::Position> directions;
-    for (float angle = 0.f; angle <= 360.f; angle += frontiers_search_angle_resolution_)
+    for (float angle = theta*180/M_PI-90; angle <= theta*180/M_PI+90; angle += RESOLUTION)
     {
         grid_map::Position dir(cos(M_PI/180.f * angle),
                                sin(M_PI/180.f * angle));
         directions.push_back(dir);
+        ROS_INFO("%f %f", theta, angle);
     }
 
      // Preallocate query point
     grid_map::Position query_point;
+    grid_map::Position query_point_ahead;
     grid_map::Position robot_position(x, y);
 
     // Iterate all directions
@@ -227,6 +229,7 @@ void WorldModelling::findCurrentFrontiers(const float &x, const float &y, const 
         {
             // Create query point
             query_point = dir * dis + robot_position;
+
 
             float traversability = 1.f;
 
@@ -325,6 +328,8 @@ void WorldModelling::updateFrontiers(const float &x, const float &y, const float
 
     // Finally, we update the frontiers using the current ones
     frontiers_ = current_frontiers_;
+
+
 }
 
 void WorldModelling::publishData(const grid_map_msgs::GridMapInfo &in_grid_map_info)
