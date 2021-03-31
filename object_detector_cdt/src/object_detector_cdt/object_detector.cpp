@@ -214,9 +214,6 @@ bool ObjectDetector::recognizeObject(ObjectIdx object_idx, const cv::Mat &in_ima
 
     bool validObject = cv::countNonZero(object_mask) > 1000 ? true : false;  // Mask valid if more than 1000 pixels
 
-    if (obj_name == "barrel" or obj_name == "barrow"){
-        validObject = false;
-    } 
     return validObject;
 }
 
