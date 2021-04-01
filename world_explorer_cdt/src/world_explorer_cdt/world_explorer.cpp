@@ -169,9 +169,14 @@ void WorldExplorer::plan()
         local_planner_.planPath(robot_x, robot_y, robot_theta, pose_goal, route_);
 
         // some more reasoning to be done here....
+        std::cout << "POSE GOAL : " << pose_goal.x() << " - " << pose_goal.y() << std::endl;
 
         // TODO Graph Planner
         graph_planner_.planPath(robot_x, robot_y, robot_theta, pose_goal, route_);
+        std::cout << "ROBOT POS : " << robot_x << " - " << robot_y << std::endl;
+        for (auto point: route_){
+            std::cout << point.x() << " - " << point.y() << std::endl;
+        }
     }
     else
     {
