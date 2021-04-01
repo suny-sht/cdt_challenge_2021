@@ -195,7 +195,7 @@ void WorldModelling::computeTraversability(const grid_map::GridMap &grid_map)
             float elevation = traversability_.at("elevation", *iterator);
             float slope = traversability_.at("slope", *iterator);
 
-            if (slope > elevation_threshold_)
+            if (elevation > elevation_threshold_ && slope > 0.1)
             {
                 traversability_.at("traversability", *iterator) = -1.0;
             }
@@ -247,7 +247,7 @@ void WorldModelling::findCurrentFrontiers(const float &x, const float &y, const 
         const float &frontier_y = frontier.point.y;
        
         bool keep = true;
-        if(isCloseToGraph(frontier_x, frontier_y, 4.f)){ keep = false;}
+        if(isCloseToGraph(frontier_x, frontier_y, 9.f)){ keep = false;}
 
         float explored_space = 1.f;
 
