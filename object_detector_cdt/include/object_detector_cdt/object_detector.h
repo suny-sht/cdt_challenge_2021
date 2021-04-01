@@ -60,7 +60,7 @@ class ObjectDetector
     double camera_cy_; // Intrinsic calibration: Camera center (in pixels)
 
     // Objects' heights
-    double barrel_real_height_, barrow_real_height_, computer_real_height_, dog_real_height_;
+    double barrel_real_height_ = 1.2, barrow_real_height_ = 0.7, computer_real_height_ = 0.5, dog_real_height_ = 0.418;
     double heights [4] = {dog_real_height_, barrel_real_height_, barrow_real_height_, computer_real_height_};
     ObjectIdx object_idxs [4] = {DOG, BARREL, BARROW, COMPUTER};
     Colour object_colours [4] = {RED, YELLOW, GREEN, BLUE};
@@ -84,7 +84,7 @@ private:
     cv::Mat applyColourFilter(const cv::Mat &in_image_bgr, const Colour &colour);
 
     // Detects the specified colour within the input image (BGR)
-    cv::Mat applyBoundingBox(const cv::Mat1b &in_mask, double &x, double &y, double &width, double &height);
+    cv::Mat applyBoundingBox(const cv::Mat1b &in_mask, double &x, double &y, double &width, double &height, std::string &name);
 
     // Implements the procedures to recognize objects
     bool recognizeDog(const cv::Mat &in_image, const ros::Time &in_timestamp, 
