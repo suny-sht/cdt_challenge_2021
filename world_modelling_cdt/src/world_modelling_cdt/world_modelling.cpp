@@ -9,8 +9,7 @@ WorldModelling::WorldModelling(ros::NodeHandle &nh)
       theta_last_(0.f),
       num_nodes_(0),
       first_node_(true),
-      first_frontier_(true),
-      filterChain_("grid_map::GridMap")
+      first_frontier_(true)
 {
     // Read parameters
     readParameters(nh);
@@ -72,12 +71,6 @@ void WorldModelling::elevationMapCallback(const grid_map_msgs::GridMap &in_grid_
     // Convert grid map and store in local variable
     grid_map::GridMap grid_map;
     grid_map::GridMapRosConverter::fromMessage(in_grid_map, grid_map);
-
-    // Apply filter chain.
-    if (!filterChain_.update(grid_map, filterChainMap_)) {
-        ROS_ERROR("Could not update the grid map filter chain!");
-        return;
-    }
 
     grid_map.convertToDefaultStartIndex();
 

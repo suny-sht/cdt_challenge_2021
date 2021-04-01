@@ -68,7 +68,6 @@ class WorldModelling
 
     // Extra 
     grid_map::GridMap exploredMap_;
-    grid_map::GridMap filterChainMap_;
 
 
 public:
@@ -104,7 +103,5 @@ private:
     bool isCloseToGraph(const float &x, const float &y,const float &threshold);
 
     void filterCallback(const grid_map_msgs::GridMap& message);
-
-    filters::FilterChain<grid_map::GridMap> filterChain_;
 
 };
