@@ -55,9 +55,39 @@ void GraphPlanner::findClosestNodes(const double& robot_x, const double& robot_y
     }
 }
 
+
+
 void GraphPlanner::generateGraphFromMsg(Eigen::MatrixXd & graph)
 {
     // TODO fill the graph representation
+}
+
+bool GraphPlanner::planPathHome(const double& robot_x, 
+                            const double& robot_y , 
+                            const double& robot_theta, 
+                            std::vector<Eigen::Vector2d>& route)
+{
+    std::vector<geometry_msgs::Pose> graph_nodes;
+
+    Eigen::Vector2d home_pose(graph_.nodes.at(0).pose.position.x, graph_.nodes.at(0).pose.position.y);
+
+    findClosestNodes(robot_x, robot_y, robot_theta, home_pose, graph_nodes);
+
+    Eigen::Vector2d goal(graph_nodes.at(0).position.x, graph_nodes.at(0).position.y);
+    Eigen::Vector2d start(graph_nodes.at(1).position.x, graph_nodes.at(1).position.y);    
+
+    int goal_id = getGraphID(goal.x(), goal.y());
+    int start_id = getGraphID(start.x(), start.y());
+
+    int no_vertices = graph_.nodes.size();
+
+    Eigen::MatrixXd graph(no_vertices, no_vertices);
+
+    generateGraphFromMsg(graph);
+
+    dijkstra(graph, start_id, goal_id, route);
+
+    return true;
 }
 
 bool GraphPlanner::planPath(const double& robot_x, 
@@ -77,13 +107,38 @@ bool GraphPlanner::planPath(const double& robot_x,
     int goal_id = getGraphID(goal.x(), goal.y());
     int start_id = getGraphID(start.x(), start.y());
 
+    if (start_id == goal_id){
+        std::cout << "Start end same" << std::endl;
+        return true;
+    } else if (goal_id == -1){
+        std::cout << "Goal ID unknown" << std::endl;
+        return true;   
+    }
+
     int no_vertices = graph_.nodes.size();
+    double dist_tol = 1;  // How close do we need to be to be 'at' node
 
     Eigen::MatrixXd graph(no_vertices, no_vertices);
 
     generateGraphFromMsg(graph);
-
+    std::cout << "running dijkstra" << std::endl;
     dijkstra(graph, start_id, goal_id, route);
+   
+    Eigen::Vector2d initial_goal = route.at(0);
+    Eigen::Vector2d robot_pos(robot_x, robot_y);
+    if (route.size() < 1){
+        std::cout << "Empty plan!" << std::endl;
+    }
+
+    if ((initial_goal - robot_pos).norm() < dist_tol){
+        std::cout << "Removing start point" << std::endl;
+        route.erase(route.begin());
+    }
+
+    if (route.size() < 1){
+        std::cout << "Empty plan 2!" << std::endl;
+    }
+    route.push_back(goal_pose);
 
     return true;
 }   
@@ -131,13 +186,27 @@ void GraphPlanner::dijkstra(const Eigen::MatrixXd& graph, int start_id, int goal
             }		
 		}
 	}
-
-    // Add goal pose to route
+    std::cout << "ran dijkstra, start id is "<< start_id << ", goal id is " << goal_id << std::endl;
+    // Add goal pose to route, TODO extract the final route
     route.clear();
+    std::cout << "cleared route" << std::endl;
+    if (dist[start_id] == 1e5)
+    {
+        ROS_ERROR("Dijkstra didn't work :( ");
+    }
+
     Eigen::Vector2d goal(graph_.nodes.at(goal_id).pose.position.x, graph_.nodes.at(goal_id).pose.position.y);
     route.push_back(goal);
 
-    // TODO extract the final route
+    int node_id = goal_id;
+
+    while (node_id != start_id){
+        node_id = path[node_id];
+        std::cout << "Node id : " << node_id << std::endl;
+        Eigen::Vector2d route_point(graph_.nodes.at(node_id).pose.position.x, graph_.nodes.at(node_id).pose.position.y);
+        route.push_back(route_point);
+    }
+    std::reverse(route.begin(), route.end());
 }
 
 int GraphPlanner::minimumDist(double dist[], bool Dset[]) 

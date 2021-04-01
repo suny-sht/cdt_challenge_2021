@@ -28,6 +28,9 @@ public:
                   Eigen::Vector2d goal_pose,
                   std::vector<Eigen::Vector2d>& route);
 
+    bool planPathHome(const double& robot_x, const double& robot_y , const double& robot_theta,
+                  std::vector<Eigen::Vector2d>& route);
+
 private:
     // Internal methods
     void findClosestNodes(const double& robot_x, const double& robot_y , const double& robot_theta, 

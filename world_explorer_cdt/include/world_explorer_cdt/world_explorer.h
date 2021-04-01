@@ -84,6 +84,7 @@ class WorldExplorer
 
     // Route
     std::vector<Eigen::Vector2d> route_;
+    std::vector<Eigen::Vector2d> graph_route_;
     
 public:
     // Constructor

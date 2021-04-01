@@ -24,7 +24,9 @@
 
 // Colours
 enum Colour { RED=0, YELLOW=1, GREEN=2,  BLUE=3 };
+
 enum ObjectIdx { DOG=0, BARREL=1, BARROW=2, COMPUTER=3 };
+
 
 class ObjectDetector
 {
