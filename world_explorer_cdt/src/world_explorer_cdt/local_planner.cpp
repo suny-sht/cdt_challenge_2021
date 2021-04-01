@@ -57,9 +57,10 @@ std::vector<Eigen::Vector2d> LocalPlanner::searchFrontiers(cdt_msgs::Frontiers f
     for(auto& frontier : frontier_costs){
         // We need to create a cost, lower cost is better                                 
  
-        float d_cost = std::hypot(frontier.x_ - robot_x, frontier.y_ - robot_y);
-        float a = atan2(frontier.y_ - robot_y, frontier.x_ - robot_x);
-        frontier.cost_ = d_cost;
+        float dist_cost = std::hypot(frontier.x_ - robot_x, frontier.y_ - robot_y);
+        float angle_to_frontier = atan2(frontier.y_ - robot_y, frontier.x_ - robot_x);
+        float angle_cost = - cos(angle_to_frontier - robot_theta) * 10;
+        frontier.cost_ = dist_cost + angle_cost;
     }
 
     // We want to sort the frontiers using the costs previously computed
