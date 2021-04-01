@@ -195,9 +195,14 @@ void WorldModelling::computeTraversability(const grid_map::GridMap &grid_map)
             float elevation = traversability_.at("elevation", *iterator);
             float slope = traversability_.at("slope", *iterator);
 
-            if (elevation > elevation_threshold_ && slope > 0.1)
+            if (elevation > elevation_threshold_ && (slope > 0.1  || slope < -0.1))
             {
-                traversability_.at("traversability", *iterator) = -1.0;
+                for (int i=0; i<3; ++i)
+                {
+                    traversability_.at("traversability", *iterator) = -1.0;
+                    ++iterator;
+                }
+
             }
             else
             {
