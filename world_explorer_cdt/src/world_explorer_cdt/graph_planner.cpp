@@ -149,6 +149,8 @@ bool GraphPlanner::planPath(const double& robot_x,
         return true;   
     }
 
+    
+
     int no_vertices = graph_.nodes.size();
     double dist_tol = 1;  // How close do we need to be to be 'at' node
 

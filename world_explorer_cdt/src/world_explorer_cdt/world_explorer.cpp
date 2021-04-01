@@ -165,9 +165,12 @@ void WorldExplorer::plan()
         Eigen::Vector2d pose_goal = goals.at(0);
 
         // Local Planner (RRT)
-        local_planner_.planPath(robot_x, robot_y, robot_theta, pose_goal, route_);
-
-        graph_planner_.planPath(robot_x, robot_y, robot_theta, pose_goal, route_);
+        bool local_plan_found = local_planner_.planPath(robot_x, robot_y, robot_theta, pose_goal, route_);
+        if(!local_plan_found)
+        {
+            graph_planner_.planPath(robot_x, robot_y, robot_theta, pose_goal, route_);
+        }
+        
         std::cout << "ROBOT POS : " << robot_x << " - " << robot_y << std::endl;
         for (auto point: route_){
             std::cout << point.x() << " - " << point.y() << std::endl;
