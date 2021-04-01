@@ -115,8 +115,8 @@ bool WorldModelling::updateGraph(const float &x, const float &y, const float &th
     // TODO: you need to update the exploration_graph_ using the current pose
 
     // You may need to change this flag with some conditions
-    float thresh = node_creation_distance_;
-    float neighbour_thresh = neighbor_distance_;
+    float thresh = 0.5;
+    float neighbour_thresh = 0.8;
     float dist;
     if(num_nodes_ > 0){
         float x_last = last_node_.pose.position.x;
