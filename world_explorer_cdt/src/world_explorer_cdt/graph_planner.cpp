@@ -65,12 +65,20 @@ void GraphPlanner::generateGraphFromMsg(Eigen::MatrixXd & graph)
             float node_x = node.pose.position.x;
             float node_y = node.pose.position.y;
 
+            // Is the following necessary?
+
+            for (auto node_j : graph_.nodes)
+            {
+                graph(node.id.data, node_j.id.data) = 0;
+            }
+
             for (auto neighbor_id : node.neighbors_id)
             {
                 float neighbor_x = graph_.nodes.at(neighbor_id.data).pose.position.x;
                 float neighbor_y = graph_.nodes.at(neighbor_id.data).pose.position.y;
-                float n_dist = pow(node_x-neighbor_x, 2) + pow(node_y-neighbor_y,2);
+                double n_dist = distance(neighbor_id.data, node.id.data);
                 graph(node.id.data, neighbor_id.data) = n_dist;
+                graph(neighbor_id.data, node.id.data) = n_dist;
             }
         } 
 }
@@ -99,6 +107,19 @@ bool GraphPlanner::planPathHome(const double& robot_x,
     generateGraphFromMsg(graph);
 
     dijkstra(graph, start_id, goal_id, route);
+
+    Eigen::Vector2d initial_goal = route.at(0);
+    Eigen::Vector2d robot_pos(robot_x, robot_y);
+    double dist_tol = 1;  // How close do we need to be to be 'at' node
+
+    while (((initial_goal - robot_pos).norm() < dist_tol) && route.size() > 0){
+        route.erase(route.begin());
+        if (route.size() > 0){
+            initial_goal = route.at(0);
+        } else {
+            break;
+        }
+    }
 
     return true;
 }
@@ -134,23 +155,21 @@ bool GraphPlanner::planPath(const double& robot_x,
     Eigen::MatrixXd graph(no_vertices, no_vertices);
 
     generateGraphFromMsg(graph);
-    std::cout << "running dijkstra" << std::endl;
     dijkstra(graph, start_id, goal_id, route);
    
     Eigen::Vector2d initial_goal = route.at(0);
     Eigen::Vector2d robot_pos(robot_x, robot_y);
-    if (route.size() < 1){
-        std::cout << "Empty plan!" << std::endl;
-    }
 
-    if ((initial_goal - robot_pos).norm() < dist_tol){
-        std::cout << "Removing start point" << std::endl;
+    while (((initial_goal - robot_pos).norm() < dist_tol) && route.size() > 0){
         route.erase(route.begin());
+        if (route.size() > 0){
+            initial_goal = route.at(0);
+        } else {
+            break;
+        }
+        
     }
 
-    if (route.size() < 1){
-        std::cout << "Empty plan 2!" << std::endl;
-    }
     route.push_back(goal_pose);
 
     return true;
@@ -200,14 +219,9 @@ void GraphPlanner::dijkstra(const Eigen::MatrixXd& graph, int start_id, int goal
 		}
 	}
     std::cout << "ran dijkstra, start id is "<< start_id << ", goal id is " << goal_id << std::endl;
-    // Add goal pose to route, TODO extract the final route
-    route.clear();
-    std::cout << "cleared route" << std::endl;
-    if (dist[start_id] == 1e5)
-    {
-        ROS_ERROR("Dijkstra didn't work :( ");
-    }
 
+    route.clear();
+    
     Eigen::Vector2d goal(graph_.nodes.at(goal_id).pose.position.x, graph_.nodes.at(goal_id).pose.position.y);
     route.push_back(goal);
 
@@ -216,6 +230,12 @@ void GraphPlanner::dijkstra(const Eigen::MatrixXd& graph, int start_id, int goal
     while (node_id != start_id){
         node_id = path[node_id];
         std::cout << "Node id : " << node_id << std::endl;
+        if (node_id == -1)
+        {
+            std::cout << "Bad path planning" << std::endl;
+            break;
+        }
+        
         Eigen::Vector2d route_point(graph_.nodes.at(node_id).pose.position.x, graph_.nodes.at(node_id).pose.position.y);
         route.push_back(route_point);
     }
