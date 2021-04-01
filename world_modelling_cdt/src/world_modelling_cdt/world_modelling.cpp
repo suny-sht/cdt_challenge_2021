@@ -318,6 +318,30 @@ void WorldModelling::findCurrentFrontiers(const float &x, const float &y, const 
 
         }
 
+        // Remove if close to graph
+
+        float x_new = query_point.x();
+        float y_new = query_point.y();
+
+        float x_node;
+        float y_node;
+        float dist_to_graph;
+
+        float DISTANCE_FROM_GRAPH = 8;
+
+        for (auto node : exploration_graph_.nodes)
+        {
+            x_node = node.pose.position.x;
+            y_node = node.pose.position.y;
+
+            dist_to_graph = pow(x_new-x_node, 2) + pow(y_new-y_node,2);
+
+            if(dist_to_graph <= DISTANCE_FROM_GRAPH)
+            {
+                needs_frontier = false;
+            }
+        } 
+
         if(needs_frontier)
             
         {
