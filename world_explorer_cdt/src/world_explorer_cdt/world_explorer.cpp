@@ -165,13 +165,8 @@ void WorldExplorer::plan()
         Eigen::Vector2d pose_goal = goals.at(0);
 
         // Local Planner (RRT)
-        // TODO Plan a route to the most suitable frontier
         local_planner_.planPath(robot_x, robot_y, robot_theta, pose_goal, route_);
 
-        // some more reasoning to be done here....
-        std::cout << "POSE GOAL : " << pose_goal.x() << " - " << pose_goal.y() << std::endl;
-
-        // TODO Graph Planner
         graph_planner_.planPath(robot_x, robot_y, robot_theta, pose_goal, route_);
         std::cout << "ROBOT POS : " << robot_x << " - " << robot_y << std::endl;
         for (auto point: route_){
@@ -182,7 +177,6 @@ void WorldExplorer::plan()
     {
         ROS_INFO("No frontiers to go to.");
         // TODO: Implement something to indicate it ended and optionally go to the home position
-
         graph_planner_.planPathHome(robot_x, robot_y, robot_theta, route_);
 
     }
