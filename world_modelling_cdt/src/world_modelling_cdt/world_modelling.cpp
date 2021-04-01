@@ -55,7 +55,7 @@ void WorldModelling::readParameters(ros::NodeHandle &nh)
     nh.param("elevation_threshold", elevation_threshold_, 0.1f);
 
     nh.param("max_distance_to_search_frontiers", max_distance_to_search_frontiers_, 3.f);
-    nh.param("distance_to_delete_frontier", distance_to_delete_frontier_, 2.5f);
+    nh.param("distance_to_delete_frontier", distance_to_delete_frontier_, 5.5f);
     nh.param("frontiers_search_angle_resolution", frontiers_search_angle_resolution_, 0.5f);
 }
 
@@ -193,8 +193,9 @@ void WorldModelling::computeTraversability(const grid_map::GridMap &grid_map)
             // YOu should fill with a 1.0 if it's traversable, and -1.0 in the other case
             
             float elevation = traversability_.at("elevation", *iterator);
+            float slope = traversability_.at("slope", *iterator);
 
-            if (elevation > elevation_threshold_)
+            if (slope > elevation_threshold_)
             {
                 traversability_.at("traversability", *iterator) = -1.0;
             }
@@ -267,6 +268,7 @@ void WorldModelling::findCurrentFrontiers(const float &x, const float &y, const 
     current_frontiers_ = filtered_frontiers;
 
     std::vector<grid_map::Position> directions;
+    // for (float angle = theta*180/M_PI-90; angle <= theta*180/M_PI+90; angle += RESOLUTION)
     for (float angle = 0.f; angle <= 360.f; angle += frontiers_search_angle_resolution_)
     {
         grid_map::Position dir(cos(M_PI/180.f * angle),
@@ -285,7 +287,7 @@ void WorldModelling::findCurrentFrontiers(const float &x, const float &y, const 
         bool needs_frontier = true;
 
         // Iterate from step to the map edge
-        for (float dis = step+2.5; dis < max_distance_to_search_frontiers_; dis += step)
+        for (float dis = step; dis < max_distance_to_search_frontiers_; dis += step)
         {
             // Create query point
             query_point = dir * dis + robot_position;
@@ -308,15 +310,15 @@ void WorldModelling::findCurrentFrontiers(const float &x, const float &y, const 
                 break;
             }
 
-            if( half_map_size - 2.f < query_point.x())
-            {
-                needs_frontier = false;
-                break;
-            }
+            // if( half_map_size - 2.f < query_point.x())
+            // {
+            //     needs_frontier = false;
+            //     break;
+            // }
 
         }
 
-        if(needs_frontier && isCloseToGraph(query_point.x(), query_point.y(), 2.f) == false)
+        if(needs_frontier)
             
         {
             geometry_msgs::PointStamped frontier;
@@ -350,30 +352,30 @@ void WorldModelling::updateFrontiers(const float &x, const float &y, const float
     cdt_msgs::Frontiers filtered_frontiers;
 
 
-    for (auto frontier : current_frontiers_.frontiers)
-    {
-        const float &frontier_x = frontier.point.x;
-        const float &frontier_y = frontier.point.y;
+    // for (auto frontier : current_frontiers_.frontiers)
+    // {
+    //     const float &frontier_x = frontier.point.x;
+    //     const float &frontier_y = frontier.point.y;
        
-        bool keep = true; 
-        float explored_space = 1.f;
+    //     bool keep = true; 
+    //     float explored_space = 1.f;
 
-        try
-        { 
-            grid_map::Position frontier_posistion(frontier_x + 1.f, frontier_y + 1.f);
-            explored_space = exploredMap_.atPosition("explored_space", frontier_posistion);
-            if(explored_space){keep = false;}
-        }
-        catch (const std::out_of_range &oor){}
+    //     try
+    //     { 
+    //         grid_map::Position frontier_posistion(frontier_x + 1.f, frontier_y + 1.f);
+    //         explored_space = exploredMap_.atPosition("explored_space", frontier_posistion);
+    //         if(explored_space){keep = false;}
+    //     }
+    //     catch (const std::out_of_range &oor){}
 
-        if(keep)
-        {
-            filtered_frontiers.frontiers.push_back(frontier);
-        }
-    }
+    //     if(keep)
+    //     {
+    //         filtered_frontiers.frontiers.push_back(frontier);
+    //     }
+    // }
 
   
-    frontiers_ = filtered_frontiers;
+    // frontiers_ = filtered_frontiers;
 
     // Preallocate query point
     grid_map::Position query_point;
