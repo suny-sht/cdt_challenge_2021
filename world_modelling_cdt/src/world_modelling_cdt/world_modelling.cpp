@@ -108,8 +108,8 @@ bool WorldModelling::updateGraph(const float &x, const float &y, const float &th
     // TODO: you need to update the exploration_graph_ using the current pose
 
     // You may need to change this flag with some conditions
-    float thresh = node_creation_distance_;
-    float neighbour_thresh = neighbor_distance_;
+    float thresh = node_creation_distance_+1.0;
+    float neighbour_thresh = neighbor_distance_+2.0;
     float dist;
     if(num_nodes_ > 0){
         float x_last = last_node_.pose.position.x;
@@ -195,7 +195,7 @@ void WorldModelling::computeTraversability(const grid_map::GridMap &grid_map)
             float elevation = traversability_.at("elevation", *iterator);
             float slope = traversability_.at("slope", *iterator);
 
-            if (elevation > elevation_threshold_ && (slope > 0.1  || slope < -0.1))
+            if (elevation > elevation_threshold_ && (slope > 0.2  || slope < -0.2))
             {
                 for (int i=0; i<3; ++i)
                 {
