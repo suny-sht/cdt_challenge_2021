@@ -60,6 +60,19 @@ void GraphPlanner::findClosestNodes(const double& robot_x, const double& robot_y
 void GraphPlanner::generateGraphFromMsg(Eigen::MatrixXd & graph)
 {
     // TODO fill the graph representation
+     for (auto node : graph_.nodes)
+        {
+            float node_x = node.pose.position.x;
+            float node_y = node.pose.position.y;
+
+            for (auto neighbor_id : node.neighbors_id)
+            {
+                float neighbor_x = graph_.nodes.at(neighbor_id.data).pose.position.x;
+                float neighbor_y = graph_.nodes.at(neighbor_id.data).pose.position.y;
+                float n_dist = pow(node_x-neighbor_x, 2) + pow(node_y-neighbor_y,2);
+                graph(node.id.data, neighbor_id.data) = n_dist;
+            }
+        } 
 }
 
 bool GraphPlanner::planPathHome(const double& robot_x, 
