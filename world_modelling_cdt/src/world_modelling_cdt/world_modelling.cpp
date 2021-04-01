@@ -108,8 +108,8 @@ bool WorldModelling::updateGraph(const float &x, const float &y, const float &th
     // TODO: you need to update the exploration_graph_ using the current pose
 
     // You may need to change this flag with some conditions
-    float thresh = 0.5;
-    float neighbour_thresh = 0.8;
+    float thresh = node_creation_distance_;
+    float neighbour_thresh = neighbor_distance_;
     float dist;
     if(num_nodes_ > 0){
         float x_last = last_node_.pose.position.x;
@@ -319,28 +319,7 @@ void WorldModelling::findCurrentFrontiers(const float &x, const float &y, const 
         }
 
         // Remove if close to graph
-
-        float x_new = query_point.x();
-        float y_new = query_point.y();
-
-        float x_node;
-        float y_node;
-        float dist_to_graph;
-
-        float DISTANCE_FROM_GRAPH = 8;
-
-        for (auto node : exploration_graph_.nodes)
-        {
-            x_node = node.pose.position.x;
-            y_node = node.pose.position.y;
-
-            dist_to_graph = pow(x_new-x_node, 2) + pow(y_new-y_node,2);
-
-            if(dist_to_graph <= DISTANCE_FROM_GRAPH)
-            {
-                needs_frontier = false;
-            }
-        } 
+        if(isCloseToGraph(query_point.x(), query_point.y(), 9.f)){ needs_frontier = false;}
 
         if(needs_frontier)
             
