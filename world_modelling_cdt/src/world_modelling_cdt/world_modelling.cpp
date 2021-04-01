@@ -236,7 +236,7 @@ void WorldModelling::findCurrentFrontiers(const float &x, const float &y, const 
     // TODO: Here you need to create "frontiers" that denote the edges of the known space
     // They're used to guide robot to new places
 
-
+    
     
     const float half_map_size = 0.5 * traversability_.getLength().x(); 
     const float step = traversability_.getResolution(); 
@@ -271,6 +271,19 @@ void WorldModelling::findCurrentFrontiers(const float &x, const float &y, const 
     }
 
     current_frontiers_ = filtered_frontiers;
+
+    if(first_frontier_)
+    {
+         geometry_msgs::PointStamped frontier;
+        frontier.header.stamp = time; // We store the time the frontier was created
+        frontier.header.frame_id = input_fixed_frame_; // And the frame it's referenced to
+        frontier.point.x = x + 3.0; // And the position, of course
+        frontier.point.y = y + 0.5;
+
+        current_frontiers_.frontiers.push_back(frontier);
+        first_frontier_ = false;
+    }
+
 
     std::vector<grid_map::Position> directions;
     // for (float angle = theta*180/M_PI-90; angle <= theta*180/M_PI+90; angle += RESOLUTION)
