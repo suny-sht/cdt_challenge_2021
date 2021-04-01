@@ -56,36 +56,36 @@ std::vector<Eigen::Vector2d> LocalPlanner::searchFrontiers(cdt_msgs::Frontiers f
     // TODO Compute cost combining information generated above, free to come up with other cost function terms
     for(auto& frontier : frontier_costs){
         // We need to create a cost, lower cost is better  
-        grid_map::Position start(robot_x, robot_y);
-        grid_map::Position end((double)frontier.x_, (double)frontier.y_);   
+        // grid_map::Position start(robot_x, robot_y);
+        // grid_map::Position end((double)frontier.x_, (double)frontier.y_);   
 
-        float traversability = 1.f;
+        // float traversability = 1.f;
 
-        for (grid_map::LineIterator iterator(traversability_, start, end);
-        !iterator.isPastEnd(); ++iterator) {
-             try
-            {
-                traversability = traversability_.at(traversability_layer_, *iterator);
-                if(traversability < 1.0){break;}
-            }
-            catch (const std::out_of_range &oor)
-            {
-                traversability = -1.0;
-                break;
-            }
-        }
+        // for (grid_map::LineIterator iterator(traversability_, start, end);
+        // !iterator.isPastEnd(); ++iterator) {
+        //      try
+        //     {
+        //         traversability = traversability_.at(traversability_layer_, *iterator);
+        //         if(traversability < 1.0){break;}
+        //     }
+        //     catch (const std::out_of_range &oor)
+        //     {
+        //         traversability = -1.0;
+        //         break;
+        //     }
+        // }
 
-        if(traversability > 0.0)
-        {
-            float dist_cost = std::hypot(frontier.x_ - robot_x, frontier.y_ - robot_y);
-            float angle_to_frontier = atan2(frontier.y_ - robot_y, frontier.x_ - robot_x);
-            float angle_cost = 1 - cos(angle_to_frontier - robot_theta) * 1;
-            frontier.cost_ = dist_cost + angle_cost;
-        }
-        else
-        {
-            frontier.cost_ = 100000.0;
-        }
+        // if(traversability > 0.0)
+        // {
+        float dist_cost = std::hypot(frontier.x_ - robot_x, frontier.y_ - robot_y);
+        float angle_to_frontier = atan2(frontier.y_ - robot_y, frontier.x_ - robot_x);
+        float angle_cost = 1 - cos(angle_to_frontier - robot_theta) * 1;
+        frontier.cost_ = dist_cost + angle_cost;
+        // }
+        // else
+        // {
+        //     frontier.cost_ = 100000.0;
+        // }
         
     }
 
