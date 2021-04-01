@@ -30,7 +30,7 @@ grid_map_filters:
     params:
       input_layer: elevation_smooth
       output_layers_prefix: normal_
-      radius: 0.15
+      radius: 0.6
       normal_vector_positive_axis: z
 
   # Add a color layer for visualization based on the surface normal.
