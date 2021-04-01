@@ -125,7 +125,7 @@ cv::Mat ObjectDetector::applyColourFilter(const cv::Mat &in_image_bgr, const Col
         inRange(hsv_image, cv::Scalar(  175,  50,  20), cv::Scalar( 180, 255, 255), mask2);
         mask = mask1 | mask2;
     } else if (colour == Colour::YELLOW) {
-        inRange(hsv_image, cv::Scalar(  25,  50,  20), cv::Scalar( 35, 255, 255), mask);
+        inRange(hsv_image, cv::Scalar(  25,  100,  100), cv::Scalar( 30, 255, 255), mask);
     } else if (colour == Colour::GREEN) {
         inRange(hsv_image, cv::Scalar(  50,  50,  20), cv::Scalar( 60, 255, 255), mask);
     } else if (colour == Colour::BLUE) {
@@ -144,17 +144,32 @@ cv::Mat ObjectDetector::applyColourFilter(const cv::Mat &in_image_bgr, const Col
     return mask;
 }
 
-cv::Mat ObjectDetector::applyBoundingBox(const cv::Mat1b &in_mask, double &x, double &y, double &width, double &height) {
+cv::Mat ObjectDetector::applyBoundingBox(const cv::Mat1b &in_mask, double &x, double &y, double &width, double &height, std::string &name) {
 
     cv::Mat drawing; // it could be useful to fill this image if you want to debug
-
+    drawing = in_mask.clone();
     // TODO: Compute the bounding box using the mask
     // You need to return the center of the object in image coordinates, as well as a bounding box indicating its height and width (in pixels)
-    x = 0;
-    y = 0;
-    width = 30;
-    height = 50;
+    
 
+    cv::Mat Points;
+    cv::findNonZero(in_mask,Points);
+    cv::Rect Min_Rect=cv::boundingRect(Points);
+
+
+    width = Min_Rect.width;
+    height = Min_Rect.height;
+    x = Min_Rect.x + width / 2;
+    y = Min_Rect.y + height / 2;
+    //std::cout << name << "       " <<  x << "       " << y << "       " << width << "       " << height << "\n";
+
+    //if (width < 20) {height = 0;}
+    //if (height < 20) {height = 0;}
+
+    cv::rectangle(drawing,Min_Rect.tl(),Min_Rect.br(),cv::Scalar(255),2);
+
+    //cv::imwrite("/home/charig/Desktop/debug/mask"+ name +".png", in_mask);
+    //cv::imwrite("/home/charig/Desktop/debug/draw"+ name +".png", drawing);
     return drawing;
 }
 
@@ -176,7 +191,7 @@ bool ObjectDetector::recognizeObject(ObjectIdx object_idx, const cv::Mat &in_ima
 
     // TODO: the functions we use below should be filled to make this work
     cv::Mat object_mask = applyColourFilter(in_image, object_colour);
-    cv::Mat in_image_bounding_box = applyBoundingBox(object_mask, object_image_center_x, object_image_center_y, object_image_width, object_image_height);
+    cv::Mat in_image_bounding_box = applyBoundingBox(object_mask, object_image_center_x, object_image_center_y, object_image_width, object_image_height, obj_name);
 
     // Note: Almost everything below should be kept as it is
 
@@ -212,8 +227,13 @@ bool ObjectDetector::recognizeObject(ObjectIdx object_idx, const cv::Mat &in_ima
     out_new_object.position.y = robot_y +  sin(robot_theta)*object_position_base_x + cos(robot_theta) * object_position_base_y;
     out_new_object.position.z = 0.0     + camera_extrinsic_z_ + -object_position_camera_y;
 
-    bool validObject = cv::countNonZero(object_mask) > 1000 ? true : false;  // Mask valid if more than 1000 pixels
-
+    bool validObject = cv::countNonZero(object_mask) > 5000 ? true : false;  // Mask valid if more than 1000 pixels
+    //validObject = false;
+    //if (validObject == true){
+    //    std::cout << object_real_height_ << "       " <<  depth << "\n";
+    //    std::cout << object_image_center_x << "       " <<  object_image_center_y << "\n";
+    //    std::cout << object_image_height << "       " <<  object_image_width << "\n";
+    //}
     return validObject;
 }
 
