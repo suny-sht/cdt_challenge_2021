@@ -52,8 +52,8 @@ void PositionController::readParameters(ros::NodeHandle &nh)
     // output topic are optional. They will use default values
     nh.param("output_twist_topic", output_twist_topic_, std::string("/cmd_vel"));
     nh.param("output_status_topic", output_status_topic_, std::string("status"));
-    nh.param("control_rate", rate_, 1.f); // 1 second default rate
-    nh.param("linear_gain", linear_gain_, 1.f);
+    nh.param("control_rate", rate_, 2.f); // 1 second default rate
+    nh.param("linear_gain", linear_gain_, 2.f);
     nh.param("heading_gain", heading_gain_, 1.f);
     nh.param("orientation_gain", orientation_gain_, 1.f);
 }

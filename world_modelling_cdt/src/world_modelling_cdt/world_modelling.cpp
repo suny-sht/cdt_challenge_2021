@@ -55,7 +55,7 @@ void WorldModelling::readParameters(ros::NodeHandle &nh)
     nh.param("elevation_threshold", elevation_threshold_, 0.1f);
 
     nh.param("max_distance_to_search_frontiers", max_distance_to_search_frontiers_, 3.f);
-    nh.param("distance_to_delete_frontier", distance_to_delete_frontier_, 5.5f);
+    nh.param("distance_to_delete_frontier", distance_to_delete_frontier_, 2.5f);
     nh.param("frontiers_search_angle_resolution", frontiers_search_angle_resolution_, 0.5f);
 }
 
@@ -277,7 +277,7 @@ void WorldModelling::findCurrentFrontiers(const float &x, const float &y, const 
     for (float angle = 0.f; angle <= 360.f; angle += frontiers_search_angle_resolution_)
     {
         grid_map::Position dir(cos(M_PI/180.f * angle),
-        sin(M_PI/180.f * angle));
+                               sin(M_PI/180.f * angle));
         directions.push_back(dir);
     }
 
@@ -324,7 +324,7 @@ void WorldModelling::findCurrentFrontiers(const float &x, const float &y, const 
         }
 
         // Remove if close to graph
-        if(isCloseToGraph(query_point.x(), query_point.y(), 9.f)){ needs_frontier = false;}
+        if(isCloseToGraph(query_point.x(), query_point.y(), 5.f)){ needs_frontier = false;}
 
         if(needs_frontier)
             

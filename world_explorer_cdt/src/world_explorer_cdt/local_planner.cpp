@@ -1,6 +1,6 @@
 #include <world_explorer_cdt/local_planner.h>
 #include <cmath>
-
+using namespace grid_map;
 LocalPlanner::LocalPlanner()
 {
     traversability_layer_ = "traversability";
@@ -55,12 +55,38 @@ std::vector<Eigen::Vector2d> LocalPlanner::searchFrontiers(cdt_msgs::Frontiers f
 
     // TODO Compute cost combining information generated above, free to come up with other cost function terms
     for(auto& frontier : frontier_costs){
-        // We need to create a cost, lower cost is better                                 
- 
-        float dist_cost = std::hypot(frontier.x_ - robot_x, frontier.y_ - robot_y);
-        float angle_to_frontier = atan2(frontier.y_ - robot_y, frontier.x_ - robot_x);
-        float angle_cost = - cos(angle_to_frontier - robot_theta) * 1;
-        frontier.cost_ = dist_cost + angle_cost;
+        // We need to create a cost, lower cost is better  
+        grid_map::Position start(robot_x, robot_y);
+        grid_map::Position end((double)frontier.x_, (double)frontier.y_);   
+
+        float traversability = 1.f;
+
+        for (grid_map::LineIterator iterator(traversability_, start, end);
+        !iterator.isPastEnd(); ++iterator) {
+             try
+            {
+                traversability = traversability_.at(traversability_layer_, *iterator);
+                if(traversability < 1.0){break;}
+            }
+            catch (const std::out_of_range &oor)
+            {
+                traversability = -1.0;
+                break;
+            }
+        }
+
+        if(traversability > 0.0)
+        {
+            float dist_cost = std::hypot(frontier.x_ - robot_x, frontier.y_ - robot_y);
+            float angle_to_frontier = atan2(frontier.y_ - robot_y, frontier.x_ - robot_x);
+            float angle_cost = 1 - cos(angle_to_frontier - robot_theta) * 1;
+            frontier.cost_ = dist_cost + angle_cost;
+        }
+        else
+        {
+            frontier.cost_ = 100000.0;
+        }
+        
     }
 
     // We want to sort the frontiers using the costs previously computed
@@ -213,14 +239,32 @@ bool LocalPlanner::isPoseValid(const Eigen::Isometry3d& pose)
     {
         corner_points.push_back( pt.head<2>() );
     }
-
+    bool valid = true;
+    float traversability = 1.f;
     // check the validity of the edge points themselfs
     for (int j = 0; j < corner_points.size(); ++j)
     {
         // TODO check that the corner points are valid (to make sure the robot itself is in a valid pose)
         // return false if not valid...
+
+        grid_map::Position position(corner_points[j].x(), corner_points[j].y());
+
+         try
+        {
+            traversability = traversability_.atPosition(traversability_layer_, position);
+            if(traversability < 1.0)
+            {
+                valid = false;
+                break;
+            }
+        }
+        catch (const std::out_of_range &oor)
+        {
+            valid = false;
+            break;
+        }
         continue;
     }
 
-    return true;
+    return valid;
 }

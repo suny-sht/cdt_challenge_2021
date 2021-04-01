@@ -7,7 +7,6 @@
 #include <tf/transform_listener.h>
 #include <grid_map_core/grid_map_core.hpp>
 #include <grid_map_ros/grid_map_ros.hpp>
-
 // // ROS messages
 #include <grid_map_msgs/GridMap.h>
 #include <cdt_msgs/Graph.h>
