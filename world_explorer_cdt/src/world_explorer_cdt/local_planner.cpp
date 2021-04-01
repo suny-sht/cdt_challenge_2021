@@ -59,7 +59,7 @@ std::vector<Eigen::Vector2d> LocalPlanner::searchFrontiers(cdt_msgs::Frontiers f
  
         float dist_cost = std::hypot(frontier.x_ - robot_x, frontier.y_ - robot_y);
         float angle_to_frontier = atan2(frontier.y_ - robot_y, frontier.x_ - robot_x);
-        float angle_cost = - cos(angle_to_frontier - robot_theta) * 10;
+        float angle_cost = - cos(angle_to_frontier - robot_theta) * 1;
         frontier.cost_ = dist_cost + angle_cost;
     }
 
