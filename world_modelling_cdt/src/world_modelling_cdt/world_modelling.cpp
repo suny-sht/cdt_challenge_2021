@@ -139,7 +139,7 @@ bool WorldModelling::updateGraph(const float &x, const float &y, const float &th
 
             float n_dist = pow(x-n_x, 2) + pow(y-n_y,2);
 
-            if(n_dist <= neighbour_thresh && node.id != last_node_.id)
+            if(n_dist <= neighbour_thresh)
             {
                 new_node.neighbors_id.push_back(node.id);  // here we fill the neighbors of the new_node
                 node.neighbors_id.push_back(new_node.id);
