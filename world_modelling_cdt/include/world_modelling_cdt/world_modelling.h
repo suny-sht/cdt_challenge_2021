@@ -106,5 +106,4 @@ private:
     void filterCallback(const grid_map_msgs::GridMap& message);
 
     filters::FilterChain<grid_map::GridMap> filterChain_;
-
 };
